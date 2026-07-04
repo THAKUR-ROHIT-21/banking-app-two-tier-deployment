@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - prod
+      - dev
+      - QA
 
 jobs:
   working-job:
