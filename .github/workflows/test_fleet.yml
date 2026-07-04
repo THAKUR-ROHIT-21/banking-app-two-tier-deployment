@@ -28,8 +28,4 @@ jobs:
 
           sleep 30
 
-          aws ssm list-command-invocations \
-            --command-id "$CMD_ID" \
-            --details \
-            --query "CommandInvocations[*].{Instance:InstanceId,Output:CommandPlugins[0].Output}" \
-            --output table
+        
