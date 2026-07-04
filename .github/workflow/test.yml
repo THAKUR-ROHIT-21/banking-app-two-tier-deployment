@@ -1,0 +1,14 @@
+name : Test Workflow
+on:
+  push:
+    branches:
+      - main
+
+
+job:
+  working-job:
+    run-on: ubuntu-latest
+
+    steps:
+      - name : Echo Massage
+        run : echo "GitHub Action is Working Successfully✅"
