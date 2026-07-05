@@ -1,0 +1,12 @@
+name : Application deploying On aws
+
+on:
+  workflow_dispatch
+
+jobs:
+  working-job:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name : Echo Message
+        run : echo "Deployed successfully ✅"

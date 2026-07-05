@@ -1,0 +1,30 @@
+name: Main Workflow
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  verify_connection:
+    uses: ./.github/workflows/test_connection.yml
+
+  test_fleet_health_envs:
+    needs: verify_connection
+    uses: ./.github/workflows/test_fleet_health.yml
+
+  smoke_test:
+    needs: verify_connection
+    uses: ./.github/workflows/smoke_test.yml
+
+  build_push:
+    needs: verify_connection
+    uses: ./.github/workflows/build_push.yml
+  deploy_test:
+    needs: verify_connection
+    uses: ./.github/workflows/deploy.yml

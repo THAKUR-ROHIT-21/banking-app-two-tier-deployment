@@ -1,10 +1,6 @@
-name: Test Workflow
+name: Test Fleet health and Env variable
 
 on:
-  push:
-    branches:
-      - main
-      - prod
   workflow_dispatch:
 
 permissions:
