@@ -64,8 +64,9 @@ jobs:
             --output text \
             --region ap-south-1)
 
-          [ "$FAILED" -gt 0 ] && \ 
-          echo "::error::Smoke Test $FAILED instances" && \ 
-          exit 1
+          if [ "$FAILED" -gt 0 ]; then
+            echo "::error::Smoke Test Failed on $FAILED instance(s)"
+            exit 1
+          fi
 
           echo "Smoke Test Passed ✅"
