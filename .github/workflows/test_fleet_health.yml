@@ -1,7 +1,6 @@
 name: Test fleet
 
 on:
-  workflow_dispatch:
   workflow_call:
 
 permissions:
