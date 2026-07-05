@@ -12,6 +12,11 @@ jobs:
   smoke:
     runs-on: ubuntu-latest
 
+    env:
+      AWS_REGION: ap-south-1
+      S3_BUCKET: 306158389325-devops-scripts
+      SCRIPT_NAME: smoke_test.py
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -20,28 +25,13 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::306158389325:role/GitHub-action-deploy-role-policy
-          aws-region: ap-south-1
-
-      - name: Create S3 bucket if not exists
-        run: |
-          BUCKET_NAME="306158389325-devops-scripts"
-          REGION="ap-south-1"
-
-          if aws s3api head-bucket --bucket "$BUCKET_NAME" 2>/dev/null; then
-            echo "Bucket already exists ✅"
-          else
-            echo "Creating bucket..."
-            aws s3api create-bucket \
-              --bucket "$BUCKET_NAME" \
-              --region "$REGION" \
-              --create-bucket-configuration LocationConstraint="$REGION"
-          fi
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Upload smoke_test.py on AWS
         run: |
-          aws s3 cp smoke_test.py \
-            s3://306158389325-devops-scripts/smoke_test.py \
-            --region ap-south-1
+          aws s3 cp "$SCRIPT_NAME" \
+            "s3://$S3_BUCKET/$SCRIPT_NAME" \
+            --region "$AWS_REGION"
 
       - name: Run Smoke Test on Fleet
         id: smoke
@@ -56,7 +46,7 @@ jobs:
             ]}' \
             --query 'Command.CommandId' \
             --output text \
-            --region ap-south-1)
+            --region "$AWS_REGION")
 
           echo "cmd_id=$CMD_ID" >> "$GITHUB_OUTPUT"
           echo "Command ID: $CMD_ID"
@@ -68,17 +58,17 @@ jobs:
           aws ssm list-command-invocations \
             --command-id "${{ steps.smoke.outputs.cmd_id }}" \
             --details \
-            --region ap-south-1 \
+            --region "$AWS_REGION" \
             --output text
 
           FAILED=$(aws ssm list-command-invocations \
             --command-id "${{ steps.smoke.outputs.cmd_id }}" \
             --query "length(CommandInvocations[?Status=='Failed'])" \
             --output text \
-            --region ap-south-1)
+            --region "$AWS_REGION")
 
           if [ "$FAILED" -gt 0 ]; then
-            echo "::error::Smoke Test Failed on $FAILED instance(s)"
+            echo "::error::Health Check Failed on $FAILED instances"
             exit 1
           fi
 
