@@ -2,6 +2,7 @@ name: Smoke testing for infra and networking
 
 on:
   workflow_call:
+  workflow_dispatch:
 
 permissions:
   id-token: write
@@ -21,9 +22,26 @@ jobs:
           role-to-assume: arn:aws:iam::306158389325:role/GitHub-action-deploy-role-policy
           aws-region: ap-south-1
 
+      - name: Create S3 bucket if not exists
+        run: |
+          BUCKET_NAME="306158389325-devops-scripts"
+          REGION="ap-south-1"
+
+          if aws s3api head-bucket --bucket "$BUCKET_NAME" 2>/dev/null; then
+            echo "Bucket already exists ✅"
+          else
+            echo "Creating bucket..."
+            aws s3api create-bucket \
+              --bucket "$BUCKET_NAME" \
+              --region "$REGION" \
+              --create-bucket-configuration LocationConstraint="$REGION"
+          fi
+
       - name: Upload smoke_test.py on AWS
         run: |
-          aws s3 cp smoke_test.py s3://306158389325-devops-scripts/smoke_test.py --region ap-south-1
+          aws s3 cp smoke_test.py \
+            s3://306158389325-devops-scripts/smoke_test.py \
+            --region ap-south-1
 
       - name: Run Smoke Test on Fleet
         id: smoke
@@ -41,6 +59,7 @@ jobs:
             --region ap-south-1)
 
           echo "cmd_id=$CMD_ID" >> "$GITHUB_OUTPUT"
+          echo "Command ID: $CMD_ID"
 
       - name: Show Results
         run: |
@@ -59,7 +78,7 @@ jobs:
             --region ap-south-1)
 
           if [ "$FAILED" -gt 0 ]; then
-            echo "::error::Health Check Failed on $FAILED instances"
+            echo "::error::Smoke Test Failed on $FAILED instance(s)"
             exit 1
           fi
 
