@@ -2,7 +2,6 @@ name: Test fleet
 
 on:
   workflow_call:
-  workflow_dispatch:
 
 permissions:
   id-token: write
@@ -24,14 +23,16 @@ jobs:
           CMD_ID=$(aws ssm send-command \
             --targets "Key=tag:App,Values=flask" \
             --document-name "AWS-RunShellScript" \
-            --parameters '{"commands":[
-              "hostname -I",
-              "docker --version 2>/dev/null || echo DOCKER NOT INSTALLED",
-              "aws --version 2>/dev/null || echo AWS CLI NOT INSTALLED",
-              "mysql --version 2>/dev/null || echo MYSQL CLIENT NOT INSTALLED",
-              "aws ssm get-parameters-by-path --path /application/banking --with-decryption --region ap-south-1"
-            ]}' \
-            --query 'Command.CommandId' \
+            --parameters '{
+              "commands":[
+                "hostname -I",
+                "docker --version 2>/dev/null || echo DOCKER NOT INSTALLED",
+                "aws --version 2>/dev/null || echo AWS CLI NOT INSTALLED",
+                "mysql --version 2>/dev/null || echo MYSQL CLIENT NOT INSTALLED",
+                "aws ssm get-parameters-by-path --path /application/banking --with-decryption --region ap-south-1"
+              ]
+            }' \
+            --query "Command.CommandId" \
             --output text \
             --region ap-south-1)
 
@@ -45,7 +46,7 @@ jobs:
             --command-id "${{ steps.health.outputs.cmd_id }}" \
             --details \
             --region ap-south-1 \
-            --query "CommandInvocations[*].{Instance:InstanceId,Status:Status,IP:CommandPlugins[0].Output}" \
+            --query "CommandInvocations[*].[InstanceId,Status,CommandPlugins[0].Output]" \
             --output text
 
           FAILED=$(aws ssm list-command-invocations \
