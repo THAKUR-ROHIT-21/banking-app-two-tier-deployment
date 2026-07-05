@@ -1,6 +1,7 @@
 name: Test fleet
 
 on:
+  workflow_call:
   workflow_dispatch:
 
 permissions:
@@ -25,36 +26,38 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --parameters '{"commands":[
               "hostname -I",
-              "docker --version 2>/dev/null  echo DOCKER NOT INSTALLED",
-              "aws --version 2>/dev/null  echo AWS CLI NOT INSTALLED",
-              "mysql --version 2>/dev/null || echo DOCKER NOT INSTALLED",
+              "docker --version 2>/dev/null || echo DOCKER NOT INSTALLED",
+              "aws --version 2>/dev/null || echo AWS CLI NOT INSTALLED",
+              "mysql --version 2>/dev/null || echo MYSQL CLIENT NOT INSTALLED",
               "aws ssm get-parameters-by-path --path /application/banking --with-decryption --region ap-south-1"
-              ]}' \
-            --query 'Command.CommandId' --output text \
+            ]}' \
+            --query 'Command.CommandId' \
+            --output text \
             --region ap-south-1)
-          echo "cmd_id"=$"CMD_ID" >> $GITHUB_OUTPUT
-      
-      
+
+          echo "cmd_id=$CMD_ID" >> $GITHUB_OUTPUT
+
       - name: Show Results
-        run:   
+        run: |
           sleep 20
+
           aws ssm list-command-invocations \
-            --command-id "${{steps.health.outputs.cmd_id}}" --details \
-            --region ap-south-1
-            --query "CommandInvocations[*].{Instance:InstanceId,Status,IP:CommandPlugins[0].Output}" \
+            --command-id "${{ steps.health.outputs.cmd_id }}" \
+            --details \
+            --region ap-south-1 \
+            --query "CommandInvocations[*].{Instance:InstanceId,Status:Status,IP:CommandPlugins[0].Output}" \
             --output text
-          
+
           FAILED=$(aws ssm list-command-invocations \
-            --command-id "${{steps.health.outputs.cmd_id}}" --details \
+            --command-id "${{ steps.health.outputs.cmd_id }}" \
+            --details \
             --query "length(CommandInvocations[?Status=='Failed'])" \
             --output text \
-            --region ap-south-1
-            )
+            --region ap-south-1)
 
-          [ "$FAILED" -gt 0 ] && \
-          echo "::error::Health Check Failed on $FAILED instances" && \
-          exit 1
+          if [ "$FAILED" -gt 0 ]; then
+            echo "::error::Health Check Failed on $FAILED instances"
+            exit 1
+          fi
 
           echo "ALL Instances Healthy ✅"
-
-        
