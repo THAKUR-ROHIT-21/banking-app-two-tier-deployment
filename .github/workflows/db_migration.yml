@@ -1,7 +1,7 @@
-name: Intializing Database
+name: Initializing Database
 
 on:
-  workflow_dispatch
+  workflow_dispatch:
 
 permissions:
   id-token: write
@@ -10,6 +10,7 @@ permissions:
 jobs:
   init-db:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,8 +25,8 @@ jobs:
       - name: Upload file on S3
         run: |
           aws s3 mb s3://306158389325-devops-scripts --region ap-south-1 2>/dev/null || true
-          aws s3 cp init.sql s3://306158389325-devops-scripts/init.sql 
-          aws s3 cp init.py s3://306158389325-devops-scripts/init.py 
+          aws s3 cp init.sql s3://306158389325-devops-scripts/init.sql --region ap-south-1
+          aws s3 cp init.py s3://306158389325-devops-scripts/init.py --region ap-south-1
           echo "✅ Files Uploaded to bucket.."
 
       - name: Run init Test on Fleet
@@ -35,14 +36,16 @@ jobs:
             --targets "Key=tag:App,Values=flask" \
             --document-name "AWS-RunShellScript" \
             --parameters '{"commands":[
-              "aws s3 cp s3://306158389325-devops-scripts/init.py /tmp/init.py",
-              "pip3 install pymysql -q 2>/dev/null",
-              "python3 /tmp/init.py || exit 1",
-              "rm /tmp/init.py"
+              "aws s3 cp s3://306158389325-devops-scripts/init.py /tmp/init.py --region ap-south-1",
+              "aws s3 cp s3://306158389325-devops-scripts/init.sql /tmp/init.sql --region ap-south-1",
+              "python3 -m pip install pymysql -q",
+              "python3 /tmp/init.py",
+              "rm -f /tmp/init.py /tmp/init.sql"
             ]}' \
             --query 'Command.CommandId' \
             --output text \
             --region ap-south-1)
+
           echo "cmd_id=$CMD_ID" >> $GITHUB_OUTPUT
 
       - name: Show Results
@@ -61,8 +64,9 @@ jobs:
             --output text \
             --region ap-south-1)
 
-          [ "$FAILED" -gt 0 ] && \
-            echo "::error::init test failed on $FAILED instance(s)!" && \
+          if [ "$FAILED" -gt 0 ]; then
+            echo "::error::init test failed on $FAILED instance(s)!"
             exit 1
+          fi
 
           echo "✅ init Test Passed!"
