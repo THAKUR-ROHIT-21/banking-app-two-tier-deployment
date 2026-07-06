@@ -38,7 +38,7 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --parameters '{"commands":[
               "aws s3 cp s3://306158389325-devops-scripts/smoke_test.py /tmp/smoke_test.py --region ap-south-1",
-              "python3 /tmp/smoke_test.py",
+              "python3 /tmp/smoke_test.py || exit 1",
               "rm -f /tmp/smoke_test.py"
             ]}' \
             --query 'Command.CommandId' \
