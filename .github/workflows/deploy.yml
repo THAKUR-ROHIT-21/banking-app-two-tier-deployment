@@ -1,12 +1,37 @@
-name : Application deploying On aws
+name: Application deploying on AWS
 
 on:
   workflow_call:
 
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  VERSION: v1
+  IMAGE: 306158389325.dkr.ecr.ap-south-1.amazonaws.com/flask_app_for_two_teir_application_simple_bank
+  REGION: ap-south-1
+  S3_BUCKET: s3://306158389325-devops-scripts
+
 jobs:
-  working-job:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name : Echo Message
-        run : echo "Deployed successfully ✅"
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          repository: THAKUR-ROHIT-21/banking-app-two-tier-deployment
+          ref: main
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::306158389325:role/GitHub-action-deploy-role-policy
+          aws-region: ${{ env.REGION }}
+
+      - name: Login to ECR
+        run: |
+          aws ecr get-login-password --region ${{ env.REGION }} | \
+          docker login --username AWS --password-stdin 306158389325.dkr.ecr.${{ env.REGION }}.amazonaws.com
+          echo "Login Successful to ECR"

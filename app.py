@@ -1,35 +1,31 @@
 import os
 import random
+import boto3
 from flask import Flask, render_template, request, redirect, session
 import pymysql
 from dotenv import load_dotenv
 
-load_dotenv()
+if os.getenv("FLASK_ENV")=="prduction":
+    client=boto3.client("ssm",region_name="ap-south-1")
+    for p in client.get_parameters_by_path(
+        Path="/application/banking",
+        withDecryption=True
+    )["Parameters"]:
+        os.environ.setdefault(os.path.basename(p["Name"]),p["Value"])
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "fallbacksecret")
 
 
-def init_db():
-    conn = get_db_connection()
-    cur = conn.cursor()
-    with open('init.sql', 'r') as f:
-        sql = f.read()
-    for statement in sql.split(';'):
-        statement = statement.strip()
-        if statement:
-            cur.execute(statement)
-    conn.commit()
-    conn.close()
-    print("✅ Database initialized!")
+
 
 
 def get_db_connection():
     return pymysql.connect(
         host=os.getenv('DB_HOST'),
-        port=int(os.getenv('DB_PORT')),
-        user=os.getenv('MYSQL_USER'),
-        password=os.getenv('MYSQL_PASSWORD'),
+        port=int(os.getenv('DB_PORT',3306)),
+        user=os.getenv('DB_USER'),
+        password=os.getenv('DB_PASSWORD'),
         db=os.getenv('MYSQL_DATABASE'),
         cursorclass=pymysql.cursors.DictCursor,
         connect_timeout=10,
@@ -41,9 +37,9 @@ def generate_account_number():
 
 
 # ─── Home ───────────────────────────────────────────────
-@app.route('/')
-def home():
-    return render_template('home.html')
+@app.route('/health')
+def health():
+    return True
 
 
 # ─── Register ───────────────────────────────────────────
@@ -137,6 +133,7 @@ def dashboard():
 
 
 # ─── Run ────────────────────────────────────────────────
-if __name__ == '__main__':
-    init_db()
+if __name__ == '__name__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+
+
