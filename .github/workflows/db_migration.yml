@@ -36,11 +36,11 @@ jobs:
             --targets "Key=tag:App,Values=flask" \
             --document-name "AWS-RunShellScript" \
             --parameters '{"commands":[
-              "aws s3 cp s3://306158389325-devops-scripts/init.py /tmp/init.py --region ap-south-1",
-              "aws s3 cp s3://306158389325-devops-scripts/init.sql /tmp/init.sql --region ap-south-1",
-              "python3 -m pip install pymysql -q",
-              "python3 /tmp/init.py",
-              "rm -f /tmp/init.py /tmp/init.sql"
+              "aws s3 cp s3://306158389325-devops-scripts/init.py /home/ubuntu/init.py --region ap-south-1",
+              "aws s3 cp s3://306158389325-devops-scripts/init.sql /home/ubuntu/init.sql --region ap-south-1",
+              "python3 -m pip install pymysql boto3 -q",
+              "python3 /home/ubuntu/init.py",
+              "rm -f /home/ubuntu/init.py /home/ubuntu/init.sql"
             ]}' \
             --query 'Command.CommandId' \
             --output text \
