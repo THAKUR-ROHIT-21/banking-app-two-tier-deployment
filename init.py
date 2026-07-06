@@ -21,12 +21,11 @@ try:
     DB_PORT = int(get_param("DB_PORT"))
 
     conn = pymysql.connect(
-    host=get_param("DB_HOST"),
-    user=get_param("DB_USER"),
-    password=get_param("DB_PASSWORD"),
-    database=get_param("DB_NAME"),
-    port=int(get_param("DB_PORT")),
-    connect_timeout=10
+        host=DB_HOST,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        port=DB_PORT,
+        connect_timeout=10
     )
 
     cur = conn.cursor()
@@ -54,4 +53,4 @@ except Exception as e:
 
 finally:
     if conn:
-        conn.close()    
+        conn.close()
