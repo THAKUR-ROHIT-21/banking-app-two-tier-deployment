@@ -1,7 +1,7 @@
 import os
 import boto3
-import sys
 import pymysql
+import sys
 
 client = boto3.client("ssm", region_name="ap-south-1")
 
@@ -9,36 +9,48 @@ def get_param(name):
     return client.get_parameter(
         Name=f"/application/banking/{name}",
         WithDecryption=True
-
     )["Parameter"]["Value"]
 
+conn = None
+
 try:
-    conn=pymysql.connect(
-        host=get_param["DB_HOST"],
-        user=get_param["DB_USER"],
-        password=get_param["DB_PASSWORD"],
-        database=get_param["DB_NAME"],
-        port=int(get_param["DB_PORT"]),
+    DB_HOST = get_param("DB_HOST")
+    DB_USER = get_param("DB_USER")
+    DB_PASSWORD = get_param("DB_PASSWORD")
+    DB_NAME = get_param("DB_NAME")
+    DB_PORT = int(get_param("DB_PORT"))
+
+    conn = pymysql.connect(
+        host=DB_HOST,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        port=DB_PORT,
         connect_timeout=10
     )
 
-    cur=conn.cursor()
-    base_dir=os.path.dirname(os.path.abspath(__file__))
-    sql_file=os.path.join(base_dir,"init.sql")
-    
-    with open(sql_file,"r",encoding="utf-8") as f:
-        sql=f.read()
-    
+    cur = conn.cursor()
+
+    cur.execute(f"CREATE DATABASE IF NOT EXISTS `{DB_NAME}`")
+    cur.execute(f"USE `{DB_NAME}`")
+
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    sql_file = os.path.join(base_dir, "init.sql")
+
+    with open(sql_file, "r", encoding="utf-8") as f:
+        sql = f.read()
+
     for statement in sql.split(";"):
-        statement=statement.strip()
+        statement = statement.strip()
         if statement:
             cur.execute(statement)
-    
+
     conn.commit()
-    print("✅ Database connect successfully")
+    print("✅ Database initialized successfully")
 
 except Exception as e:
-    print("❌ error :",e)
+    print("❌ error:", e)
+    sys.exit(1)
 
 finally:
-    conn.close()
+    if conn:
+        conn.close()
