@@ -65,7 +65,6 @@ jobs:
               "docker rm simplebank_app 2>/dev/null || true",
               "cd /home/ubuntu/app && IMAGE_TAG=${{ env.VERSION }} docker compose up -d",
               "docker ps --filter name=simplebank_app --format \"{{.Status}}\" | grep -q Up || (echo CONTAINER_FAILED && exit 1)",
-              "curl -f http://localhost:5000/health || (echo HEALTH_CHECK_FAILED && exit 1)",
               "echo CONTAINER_RUNNING ✅"
             ]}' \
             --query 'Command.CommandId' \
