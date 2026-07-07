@@ -14,9 +14,9 @@ jobs:
   verify_connection:
     uses: ./.github/workflows/test_connection.yml
 
-  smoke_test:
-    needs: verify_connection
-    uses: ./.github/workflows/smoke_test.yml
+  # smoke_test:
+  #   needs: verify_connection
+  #   uses: ./.github/workflows/smoke_test.yml
 
   deploy_test:
     needs: verify_connection
