@@ -41,6 +41,10 @@ def generate_account_number():
 def health():
     return True
 
+@app.route('/')
+def home():
+    return render_template('home.html')
+
 
 # ─── Register ───────────────────────────────────────────
 @app.route('/register', methods=['GET', 'POST'])
