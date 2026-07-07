@@ -2,7 +2,6 @@ name: Deploy SimpleBank
 
 on:
   workflow_call:
-  workflow_dispatch:
 
 permissions:
   id-token: write
@@ -13,7 +12,6 @@ env:
   IMAGE: 306158389325.dkr.ecr.ap-south-1.amazonaws.com/flask_app_for_two_teir_application_simple_bank
   REGION: ap-south-1
   S3_BUCKET: s3://306158389325-devops-scripts
-  ECR_REGISTRY: 306158389325.dkr.ecr.ap-south-1.amazonaws.com
 
 jobs:
   build-and-deploy:
@@ -34,62 +32,51 @@ jobs:
 
       - name: Login to ECR
         run: |
-          set -e
           aws ecr get-login-password --region ${{ env.REGION }} | \
-          docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}
-          echo "✅ Login successful to ECR"
+          docker login --username AWS --password-stdin \
+          306158389325.dkr.ecr.${{ env.REGION }}.amazonaws.com
+          echo "Login Successfull to ECR ✅"
 
-      - name: Build and Push Image
+      - name: Build and Push image
         run: |
-          set -e
           docker build -t ${{ env.IMAGE }}:${{ env.VERSION }} .
           docker push ${{ env.IMAGE }}:${{ env.VERSION }}
-          echo "✅ Image pushed: ${{ env.IMAGE }}:${{ env.VERSION }}"
+          echo "Image Pushed : ${{ env.VERSION }} ✅"
 
-      - name: Upload Docker Compose to S3
+      - name: Upload Docker-Compose to S3
         run: |
-          set -e
           aws s3 cp docker-compose.yml ${{ env.S3_BUCKET }}/docker-compose.yml --region ${{ env.REGION }}
-          echo "✅ docker-compose.yml uploaded to S3"
+          echo "Docker compose Uploaded ✅"
 
       - name: Deploy via SSM
         id: deploy
         run: |
-          set -e
-
           CMD_ID=$(aws ssm send-command \
             --targets "Key=tag:App,Values=flask" \
             --document-name "AWS-RunShellScript" \
-            --comment "Deploy SimpleBank ${{ env.VERSION }} by ${{ github.actor }}" \
-            --parameters '{
-              "commands": [
-                "set -e",
-                "echo Starting deployment...",
-                "aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 306158389325.dkr.ecr.ap-south-1.amazonaws.com",
-                "mkdir -p /home/ubuntu/app",
-                "aws s3 cp s3://306158389325-devops-scripts/docker-compose.yml /home/ubuntu/app/docker-compose.yml --region ap-south-1",
-                "docker pull 306158389325.dkr.ecr.ap-south-1.amazonaws.com/flask_app_for_two_teir_application_simple_bank:v1",
-                "docker stop simplebank 2>/dev/null || true",
-                "docker rm simplebank 2>/dev/null || true",
-                "cd /home/ubuntu/app && IMAGE_TAG=v1 docker compose up -d",
-                "sleep 10",
-                "docker ps",
-                "docker ps --filter name=simplebank --format \"{{.Status}}\" | grep -q Up",
-                "echo CONTAINER_RUNNING ✅"
-              ]
-            }' \
+            --comment "Deploy ${{ env.VERSION }} by ${{ github.actor }}" \
+            --parameters '{"commands":[
+              "set -e",
+              "aws ecr get-login-password --region ${{ env.REGION }} | docker login --username AWS --password-stdin 306158389325.dkr.ecr.${{ env.REGION }}.amazonaws.com",
+              "mkdir -p /home/ubuntu/app",
+              "aws s3 cp ${{ env.S3_BUCKET }}/docker-compose.yml /home/ubuntu/app/docker-compose.yml --region ${{ env.REGION }}",
+              "docker pull ${{ env.IMAGE }}:${{ env.VERSION }}",
+              "docker stop simplebank_app 2>/dev/null || true",
+              "docker rm simplebank_app 2>/dev/null || true",
+              "cd /home/ubuntu/app && IMAGE_TAG=${{ env.VERSION }} docker compose up -d",
+              "docker ps --filter name=simplebank_app --format \"{{.Status}}\" | grep -q Up || (echo CONTAINER_FAILED && exit 1)",
+              "curl -f http://localhost:5000/health || (echo HEALTH_CHECK_FAILED && exit 1)",
+              "echo CONTAINER_RUNNING ✅"
+            ]}' \
             --query 'Command.CommandId' \
             --output text \
             --region ${{ env.REGION }})
 
           echo "cmd_id=$CMD_ID" >> $GITHUB_OUTPUT
-          echo "✅ SSM Command ID: $CMD_ID"
 
       - name: Verify Deployment
         run: |
-          set -e
-
-          for i in {1..20}; do
+          for i in {1..10}; do
             STATUS=$(aws ssm list-command-invocations \
               --command-id "${{ steps.deploy.outputs.cmd_id }}" \
               --query "CommandInvocations[*].Status" \
@@ -98,15 +85,7 @@ jobs:
 
             echo "[$i] Status: $STATUS"
 
-            if echo "$STATUS" | grep -q "Success"; then
-              break
-            fi
-
-            if echo "$STATUS" | grep -q "Failed\|Cancelled\|TimedOut"; then
-              break
-            fi
-
-            sleep 10
+            echo "$STATUS" | grep -q "InProgress\|Pending" && sleep 10 || break
           done
 
           echo "============ DEPLOY RESULTS ============"
@@ -118,11 +97,12 @@ jobs:
             --query "CommandInvocations[*].[InstanceId,Status,CommandPlugins[0].Output]" \
             --output text
 
-          FINAL_STATUS=$(aws ssm list-command-invocations \
+          FAILED=$(aws ssm list-command-invocations \
             --command-id "${{ steps.deploy.outputs.cmd_id }}" \
-            --query "CommandInvocations[*].Status" \
+            --query "length(CommandInvocations[?Status=='Failed'])" \
             --output text \
             --region ${{ env.REGION }})
 
-          echo "$FINAL_STATUS" | grep -q "Success"
+          [ "$FAILED" -gt 0 ] && echo "::error::Deploy failed on $FAILED instance(s)!" && exit 1
+
           echo "✅ Deploy successful — ${{ env.VERSION }}"
