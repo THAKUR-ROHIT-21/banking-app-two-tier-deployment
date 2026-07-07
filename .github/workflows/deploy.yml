@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 env:
-  VERSION: v1
+  VERSION: v2
   IMAGE: 306158389325.dkr.ecr.ap-south-1.amazonaws.com/flask_app_for_two_teir_application_simple_bank
   REGION: ap-south-1
   S3_BUCKET: s3://306158389325-devops-scripts
