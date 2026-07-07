@@ -1,0 +1,45 @@
+name: SNS Notification
+
+on:
+  workflow_call:
+    inputs:
+      status:
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  REGION: ap-south-1
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::306158389325:role/GitHub-action-deploy-role-policy
+          aws-region: ${{ env.REGION }}
+
+      - name: Read SNS ARN from SSM
+        id: sns
+        run: |
+          ARN=$(aws ssm get-parameter \
+            --name "/application/banking/SNS_TOPIC_ARN" \
+            --query "Parameter.Value" \
+            --output text \
+            --region ${{ env.REGION }})
+
+          echo "arn=$ARN" >> $GITHUB_OUTPUT
+
+      - name: Send SNS Notification
+        run: |
+          aws sns publish \
+            --topic-arn "${{ steps.sns.outputs.arn }}" \
+            --subject "SimpleBank Deployment ${{ inputs.status }}" \
+            --message "SimpleBank deployment status: ${{ inputs.status }}. Version: v1" \
+            --region ${{ env.REGION }}

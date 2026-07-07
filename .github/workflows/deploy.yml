@@ -105,3 +105,17 @@ jobs:
           [ "$FAILED" -gt 0 ] && echo "::error::Deploy failed on $FAILED instance(s)!" && exit 1
 
           echo "✅ Deploy successful — ${{ env.VERSION }}"
+
+  notify-success:
+    needs: build-and-deploy
+    if: success()
+    uses: ./.github/workflows/notification.yml
+    with:
+      status: "SUCCESS ✅"
+
+  notify-failure:
+    needs: build-and-deploy
+    if: failure()
+    uses: ./.github/workflows/notification.yml
+    with:
+      status: "FAILED ❌"

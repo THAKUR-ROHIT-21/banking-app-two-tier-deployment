@@ -23,6 +23,22 @@ if os.getenv("FLASK_ENV") == "production":
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "fallbacksecret")
 
+# -------------------- SNS --------------------
+sns = boto3.client("sns", region_name="ap-south-1")
+SNS_TOPIC_ARN = os.getenv("SNS_TOPIC_ARN")
+
+
+def send_notification(subject, message):
+    if SNS_TOPIC_ARN:
+        try:
+            sns.publish(
+                TopicArn=SNS_TOPIC_ARN,
+                Subject=subject,
+                Message=message
+            )
+        except Exception as e:
+            print(f"SNS Error: {e}")
+
 
 # -------------------- Database --------------------
 def get_db_connection():
@@ -83,6 +99,17 @@ def register():
         conn.commit()
         conn.close()
 
+        send_notification(
+            "SimpleBank - New User Registration",
+            f"""
+A new user has been registered.
+
+Username    : {username}
+Application : SimpleBank
+Status      : SUCCESS
+"""
+        )
+
         return redirect("/login")
 
     return render_template("register.html")
@@ -108,6 +135,18 @@ def login():
 
         if user:
             session["username"] = username
+
+            send_notification(
+                "SimpleBank - User Login",
+                f"""
+User Login Successful
+
+Username    : {username}
+Application : SimpleBank
+Status      : SUCCESS
+"""
+            )
+
             return redirect("/dashboard")
 
         return render_template(
@@ -121,6 +160,20 @@ def login():
 # -------------------- Logout --------------------
 @app.route("/logout")
 def logout():
+    username = session.get("username")
+
+    if username:
+        send_notification(
+            "SimpleBank - User Logout",
+            f"""
+User Logout Successful
+
+Username    : {username}
+Application : SimpleBank
+Status      : SUCCESS
+"""
+        )
+
     session.pop("username", None)
     return redirect("/login")
 
@@ -155,6 +208,22 @@ def open_account():
 
         conn.commit()
         conn.close()
+
+        send_notification(
+            "SimpleBank - New Bank Account",
+            f"""
+New Bank Account Created
+
+Customer Name : {name}
+Email         : {email}
+Mobile        : {mobile}
+Account No    : {account_number}
+Balance       : {balance}
+
+Application   : SimpleBank
+Status        : SUCCESS
+"""
+        )
 
         return redirect("/dashboard")
 
