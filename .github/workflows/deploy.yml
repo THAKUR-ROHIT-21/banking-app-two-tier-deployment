@@ -35,3 +35,9 @@ jobs:
           aws ecr get-login-password --region ${{ env.REGION }} | \
           docker login --username AWS --password-stdin 306158389325.dkr.ecr.${{ env.REGION }}.amazonaws.com
           echo "Login Successful to ECR"
+
+      - name: Upload Docker-compose to S3
+        run:
+          aws s3 mb ${{env.S3_BUCKET}} --region ${{env.REGION}} 2>/dev/null || true
+          aws s3 cp docker-compose.yml ${{env.REGION}}
+          echo "Docker-Compose Uploaded✅"
