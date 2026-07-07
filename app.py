@@ -31,7 +31,7 @@ def get_db_connection():
         port=int(os.getenv("DB_PORT", 3306)),
         user=os.getenv("DB_USER"),
         password=os.getenv("DB_PASSWORD"),
-        db=os.getenv("MYSQL_DATABASE"),
+        db=os.getenv("DB_NAME"),
         cursorclass=pymysql.cursors.DictCursor,
         connect_timeout=10,
     )
