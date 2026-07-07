@@ -30,18 +30,16 @@ jobs:
         run: |
           ARN=$(aws ssm get-parameter \
             --name "/application/banking/SNS_TOPIC_ARN" \
-            --with-decryption \
             --query "Parameter.Value" \
             --output text \
             --region ${{ env.REGION }})
 
-          echo "SNS ARN: $ARN"
-          echo "arn=$ARN" >> "$GITHUB_OUTPUT"
+          echo "arn=$ARN" >> $GITHUB_OUTPUT
 
       - name: Send SNS Notification
         run: |
           aws sns publish \
             --topic-arn "${{ steps.sns.outputs.arn }}" \
             --subject "SimpleBank Deployment ${{ inputs.status }}" \
-            --message "SimpleBank deployment status: ${{ inputs.status }}" \
+            --message "SimpleBank deployment status: ${{ inputs.status }}. Version: v1" \
             --region ${{ env.REGION }}
